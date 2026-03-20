@@ -1,73 +1,48 @@
-# StealthNet MVP
+# StealthNet
 
-StealthNet is a minimal Rust implementation of the protocol skeleton we discussed:
+## О проекте
+StealthNet — это MVP защищённой overlay-сети на Rust. Проект предназначен для передачи обычного IP-трафика между удалёнными подсетями не напрямую, а через собственный оверлейный транспорт. Для внешней сети такой обмен выглядит как UDP-трафик между узлами StealthNet, а полезная нагрузка внутри шифруется.
 
-- L3 overlay forwarding through a userspace gateway daemon;
-- mapping `IP/prefix -> stealth address -> overlay next hop`;
-- transport encryption with static X25519 identities and AEAD;
-- local TUN device for inner IP packets;
-- CLI utilities for `ping`, route inspection, and public-client listing.
+Практическая цель проекта — обеспечить защищённую связность между сегментами локальной сети при передаче трафика через недоверенную среду и тем самым снизить риск атак класса AiTM на транспортном участке.
 
-## What is implemented
+В текущем виде проект представляет собой минимально рабочий прототип, который демонстрирует основную механику:
+- есть локальный TUN-интерфейс для внутреннего IP-трафика;
+- есть шлюзовой демон, который принимает пакеты из TUN и пересылает их по overlay-сети;
+- есть сопоставление `IP/prefix -> stealth-адрес -> следующий overlay-hop`;
+- есть шифрование транспортного уровня на базе статических X25519-идентичностей и AEAD;
+- есть CLI для диагностики, просмотра маршрутов и проверки доступности узлов.
 
-This repository contains a **compilable MVP target**:
+Текущая версия — это именно рабочий MVP, а не полная реализация всех задуманных механизмов.
 
-- `stealthd` — gateway daemon
-- `stealthctl` — local admin/diagnostic CLI
-- static IP-to-stealth routing
-- static overlay routing
-- direct or relay forwarding by final stealth destination
-- `PING_REQ/PING_RESP`
-- `PUBLIC_CLIENTS_REQ/PUBLIC_CLIENTS_RESP`
-- Linux TUN device support
+## Что уже реализовано
+Сейчас в репозитории есть:
+- `stealthd` — основной демон шлюза;
+- `stealthctl` — утилита для локального управления и диагностики;
+- статическая таблица маршрутов `IP -> stealth`;
+- статическая overlay-маршрутизация между узлами;
+- прямая пересылка и пересылка через промежуточный узел по stealth-назначению;
+- служебные сообщения `PING_REQ / PING_RESP`;
+- запрос списка публичных клиентов `PUBLIC_CLIENTS_REQ / PUBLIC_CLIENTS_RESP`;
+- поддержка Linux TUN.
 
-## What is not implemented yet
+## Что пока не реализовано
+Текущий прототип не включает:
+- иерархическую сеть root / zone / shard-резолверов;
+- вращающиеся descriptor tag;
+- динамическое объявление и отзыв маршрутов;
+- capability tokens;
+- маскирующий фоновый трафик;
+- многохоповое onion-шифрование.
 
-- hierarchical root/zone/shard resolver network
-- rotating descriptor tags
-- dynamic route advertisement and withdrawal
-- capability tokens
-- cover traffic
-- onion-style multihop encryption
+При этом формат конфигурации уже позволяет развивать архитектуру дальше без полного переписывания системы.
 
-The config format already contains room for the hierarchy fields.
+## Как это устроено
+В системе у каждого узла есть свой stealth-идентификатор и ключевая пара. Узел-шлюз поднимает TUN-интерфейс, получает из него внутренние IP-пакеты, определяет, какому stealth-адресу соответствует нужная подсеть, и отправляет данные в overlay-сеть по UDP. Если для конечного узла задан промежуточный hop, пакет проходит через него.
 
-## Build
+С точки зрения пользователя полезный трафик может быть обычным — например, HTTP между приватными адресами. С точки зрения наблюдателя на транспортном сегменте виден только UDP-обмен StealthNet.
 
-You need a Linux machine with Rust installed.
+## Сборка
+Нужна Linux-машина с установленным Rust.
 
 ```bash
 cargo build --release
-```
-
-## Run
-
-Start the daemon on each gateway:
-
-```bash
-sudo RUST_LOG=info ./target/release/stealthd --config examples/gw-a.toml
-sudo RUST_LOG=info ./target/release/stealthd --config examples/gw-b.toml
-```
-
-Then from another shell on the same node:
-
-```bash
-./target/release/stealthctl --config examples/gw-a.toml routes show
-./target/release/stealthctl --config examples/gw-a.toml routes lookup 10.20.0.10
-./target/release/stealthctl --config examples/gw-a.toml ping stl:1:lab:zone-b:shard-03:gw-b
-./target/release/stealthctl --config examples/gw-a.toml clients stl:1:lab:zone-b:shard-03:gw-b
-```
-
-## Linux notes
-
-- `stealthd` needs permission to open `/dev/net/tun` and configure the link, so run it with `CAP_NET_ADMIN` or as root.
-- The daemon shells out to `ip` to assign the TUN address and bring the interface up.
-- You still need appropriate host/container routes so traffic for the remote subnet reaches the TUN-backed gateway.
-
-## Suggested first demo
-
-- Gateway A owns `10.10.0.0/24`
-- Gateway B owns `10.20.0.0/24`
-- each gateway has a direct overlay peer entry for the other
-- application traffic is normal HTTP over private IPs
-- on the inter-gateway segment only StealthNet UDP frames are visible
