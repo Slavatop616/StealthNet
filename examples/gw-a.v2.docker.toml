@@ -1,0 +1,59 @@
+[node]
+id = "gw-a"
+role = "gateway"
+stealth = "stl:1:lab:zone-a:gw-a"
+root = "lab"
+zone = "zone-a"
+
+[transport]
+listen = "0.0.0.0:7000"
+mtu = 1300
+
+[crypto]
+identity_key_file = "/app/keys/gw-a.key"
+epoch_seconds = 300
+rekey_after_packets = 100000
+
+[routing]
+owned_prefixes = []
+default_policy = "drop"
+
+[[routing.static_map]]
+prefix = "10.50.0.2/32"
+stealth = "stl:1:lab:zone-a:client-a"
+metric = 10
+mode = "host"
+
+[[routing.static_map]]
+prefix = "10.50.1.2/32"
+stealth = "stl:1:lab:zone-b:client-b"
+metric = 10
+mode = "host"
+
+[[routing.overlay_routes]]
+destination = "stl:1:lab:zone-b:client-b"
+via = "gw-b"
+
+[[routing.overlay_routes]]
+destination = "stl:1:lab:zone-b:gw-b"
+via = "gw-b"
+
+[admin]
+unix_socket = "/tmp/stealthd-gw-a.sock"
+
+[public_clients]
+enabled = true
+publish_policy = "opt-in"
+max_entries = 64
+
+[[peers]]
+id = "gw-b"
+stealth = "stl:1:lab:zone-b:gw-b"
+addr = "172.31.250.11:7001"
+public_key = "BhMo5gkPnCb84iyLgGql422fWxpN+9eN2v0xN9oIHVw="
+
+[[peers]]
+id = "client-a"
+stealth = "stl:1:lab:zone-a:client-a"
+addr = "172.31.250.20:7002"
+public_key = "i2joPCK1jATcc+xZkFy3BZiRqo314dHbvj81EtWh6D8="

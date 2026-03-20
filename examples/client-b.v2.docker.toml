@@ -1,0 +1,55 @@
+[node]
+id = "client-b"
+role = "client"
+stealth = "stl:1:lab:zone-b:client-b"
+root = "lab"
+zone = "zone-b"
+
+[transport]
+listen = "0.0.0.0:7003"
+mtu = 1300
+
+[crypto]
+identity_key_file = "/app/keys/client-b.key"
+epoch_seconds = 300
+rekey_after_packets = 100000
+
+[tun]
+enabled = true
+name = "stn0"
+mtu = 1300
+
+[routing]
+owned_prefixes = []
+default_policy = "drop"
+
+[[routing.static_map]]
+prefix = "10.50.0.2/32"
+stealth = "stl:1:lab:zone-a:client-a"
+metric = 10
+mode = "host"
+
+[[routing.overlay_routes]]
+destination = "stl:1:lab:zone-a:client-a"
+via = "gw-b"
+
+[[routing.overlay_routes]]
+destination = "stl:1:lab:zone-a:gw-a"
+via = "gw-b"
+
+[client]
+home_gateway_id = "gw-b"
+public_id = "client-b"
+requested_overlay_ip = "10.50.1.2/32"
+requested_stealth = "stl:1:lab:zone-b:client-b"
+register_capabilities = ["ping", "http-server"]
+bootstrap_timeout_ms = 3000
+
+[admin]
+unix_socket = "/tmp/stealthd-client-b.sock"
+
+[[peers]]
+id = "gw-b"
+stealth = "stl:1:lab:zone-b:gw-b"
+addr = "172.31.250.11:7001"
+public_key = "BhMo5gkPnCb84iyLgGql422fWxpN+9eN2v0xN9oIHVw="

@@ -1,0 +1,53 @@
+[node]
+id = "gw-b"
+role = "gateway"
+stealth = "stl:1:lab:zone-b:shard-03:gw-b"
+root = "lab"
+zone = "zone-b"
+shard = "shard-03"
+
+[transport]
+listen = "0.0.0.0:7001"
+mtu = 1300
+
+[crypto]
+identity_key_file = "./keys/gw-b.key"
+epoch_seconds = 300
+rekey_after_packets = 100000
+
+[tun]
+enabled = true
+name = "stn1"
+address = "172.31.0.2/30"
+mtu = 1300
+
+[routing]
+owned_prefixes = ["10.20.0.0/24"]
+default_policy = "drop"
+
+[[routing.static_map]]
+prefix = "10.10.0.0/24"
+stealth = "stl:1:lab:zone-a:shard-01:gw-a"
+metric = 10
+mode = "subnet"
+
+[admin]
+unix_socket = "/tmp/stealthd-gw-b.sock"
+
+[public_clients]
+enabled = true
+publish_policy = "opt-in"
+max_entries = 32
+
+[[public_clients.entries]]
+public_id = "web-b"
+client_stealth = "stl:1:lab:zone-b:shard-03:web-b"
+advertised_prefixes = ["10.20.0.10/32"]
+capabilities = ["http"]
+ttl = 300
+
+[[peers]]
+id = "gw-a"
+stealth = "stl:1:lab:zone-a:shard-01:gw-a"
+addr = "127.0.0.1:7000"
+public_key = "ePK+wf5GtaljBkjbZDmecXewoKJqQNIxLgHb2idzHx8="

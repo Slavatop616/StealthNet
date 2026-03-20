@@ -1,0 +1,92 @@
+services:
+  gw-a:
+    build:
+      context: .
+      dockerfile: Dockerfile.runtime
+    environment:
+      RUST_LOG: debug
+      RUST_BACKTRACE: "1"
+    command: ["/app/stealthd", "--config", "/app/examples/gw-a.v2.docker.toml"]
+    volumes:
+      - ./examples:/app/examples:ro
+      - ./keys:/app/keys:ro
+    networks:
+      transport:
+        ipv4_address: 172.31.250.10
+
+  gw-b:
+    build:
+      context: .
+      dockerfile: Dockerfile.runtime
+    environment:
+      RUST_LOG: debug
+      RUST_BACKTRACE: "1"
+    command: ["/app/stealthd", "--config", "/app/examples/gw-b.v2.docker.toml"]
+    volumes:
+      - ./examples:/app/examples:ro
+      - ./keys:/app/keys:ro
+    networks:
+      transport:
+        ipv4_address: 172.31.250.11
+
+  client-a:
+    build:
+      context: .
+      dockerfile: Dockerfile.runtime
+    environment:
+      RUST_LOG: debug
+      RUST_BACKTRACE: "1"
+    command: ["sh", "/app/docker/client-entrypoint.sh", "/app/examples/client-a.v2.docker.toml", "stn0", "10.50.0.0/16"]
+    volumes:
+      - ./examples:/app/examples:ro
+      - ./keys:/app/keys:ro
+      - ./docker:/app/docker:ro
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    networks:
+      transport:
+        ipv4_address: 172.31.250.20
+    depends_on:
+      - gw-a
+
+  client-b:
+    build:
+      context: .
+      dockerfile: Dockerfile.runtime
+    environment:
+      RUST_LOG: debug
+      RUST_BACKTRACE: "1"
+    command: ["sh", "/app/docker/client-entrypoint.sh", "/app/examples/client-b.v2.docker.toml", "stn0", "10.50.0.0/16", "http-server", "10.50.1.2", "8080"]
+    volumes:
+      - ./examples:/app/examples:ro
+      - ./keys:/app/keys:ro
+      - ./docker:/app/docker:ro
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    networks:
+      transport:
+        ipv4_address: 172.31.250.21
+    depends_on:
+      - gw-b
+
+  sniffer:
+    image: nicolaka/netshoot:latest
+    command: ["sh", "-lc", "sleep infinity"]
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    volumes:
+      - ./captures:/captures
+    networks:
+      transport: {}
+
+networks:
+  transport:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.31.250.0/24
