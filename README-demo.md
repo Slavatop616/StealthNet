@@ -7,7 +7,7 @@
 - `sniffer` пишет транспортный трафик StealthNet в `./captures/stealthnet-transport.pcap`
 
 ## Подготовка
-Создание ключи в `./keys` рядом с `compose.yaml`:
+Создание ключей в `./keys` рядом с `compose.yaml`:
 
 ```bash
 mkdir -p keys captures
